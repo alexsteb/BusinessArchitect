@@ -1,20 +1,22 @@
-package model;
+package util;
 
 import util.Point;
 
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
-public class PathInterpreter {
+public class SVGPath {
 
 	private interface tokenLambda {
 		Double get(int currentIndex, int add);
 	}
 
+	private static Map<String, Path2D> knownPaths = new HashMap<>();
+
 	public static Path2D getPath(String pathText){
+		if (knownPaths.containsKey(pathText)) return knownPaths.get(pathText);
+
 		Path2D returnPath = new Path2D.Double();
 		returnPath.moveTo(0.0, 0.0);
 
@@ -48,7 +50,8 @@ public class PathInterpreter {
 			}
 			
 		}
-		
+
+		knownPaths.put(pathText, returnPath);
 		return returnPath;
 	}
 
@@ -489,90 +492,5 @@ public class PathInterpreter {
 	}*/
 }
 
-
-class InfoPack {
-	List<LineInfo> lines = new ArrayList<>();
-	double length = 0.0;
-	List<Boolean> reverses = new ArrayList<>();
-	
-	public InfoPack(LineInfo line, double length, boolean reverse) {
-		lines.add(0,line);
-		this.length = length;
-		reverses.add(0,reverse);
-	}
-}
-
-
-class LineInfo {
-	public List<String> tokens = new ArrayList<>();
-	public Point begin, end; //Line begin and end -> for finding connections
-	public boolean hasOrigin = false;
-	public boolean hasTarget = false;
-	public boolean hasWrong = false;
-	public double originPerc = 0.0;
-	public double targetPerc = 0.0;
-	public double wrongPerc = 0.0;
-	public double length = 0.0; //a2+b2=c2
-	
-	public double totalPathLength = 0.0; //used for recursive function
-	
-	public void CalculateLength() {
-		if (tokens.size() == 0) return;
-		
-		if (tokens.get(0).equals("L")) {
-			length = Math.sqrt(Math.pow(end.x-begin.x, 2)+Math.pow(end.y-begin.y, 2));
-		} 
-		
-		else if (tokens.get(0).equals("C") || tokens.get(0).equals("Q")) {
-			//Duplicate control point for translation Q -> C
-			if (tokens.get(0).toUpperCase().equals("Q")) {
-				tokens.add(tokens.get(3));
-				tokens.add(tokens.get(4));
-				tokens.set(3, tokens.get(1));
-				tokens.set(4, tokens.get(2));
-				tokens.set(0, "C");
-			}
-			
-			Point lastPoint = begin;
-			
-			double totalLength = 0.0;
-			
-			for (double x = 0.01; x <= 1.0; x+=0.01) {
-				Point AB = percOnLine(x, begin,  new Point(Double.parseDouble(tokens.get(1)), Double.parseDouble(tokens.get(2))));
-				Point BC = percOnLine(x, new Point(Double.parseDouble(tokens.get(1)), Double.parseDouble(tokens.get(2))), new Point(Double.parseDouble(tokens.get(3)), Double.parseDouble(tokens.get(4))));
-				Point CD = percOnLine(x, new Point(Double.parseDouble(tokens.get(3)), Double.parseDouble(tokens.get(4))), new Point(Double.parseDouble(tokens.get(5)), Double.parseDouble(tokens.get(6))));
-				
-				Point ABBC = percOnLine(x, AB, BC);
-				Point BCCD = percOnLine(x, BC, CD);
-				
-				Point P = percOnLine(x, ABBC, BCCD);
-				
-				totalLength += P.distance(lastPoint);
-				
-				
-				lastPoint = P;
-			}
-			length = totalLength;
-		}
-		
-	}
-	
-	private static Point percOnLine(double x, Point l1, Point l2) {
-		//Return point at x% along line l1-l2
-		return new Point(l1.x+x*(l2.x-l1.x),l1.y+x*(l2.y-l1.y));
-	}
-	
-}
-
-
-class PointAndPercentage {
-	public Point point;
-	public double percentage;
-
-	public PointAndPercentage(Point point, double percentage) {
-		this.point = point;
-		this.percentage = percentage;
-	}
-}
 
 

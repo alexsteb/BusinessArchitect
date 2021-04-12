@@ -1,6 +1,8 @@
 package model;
 
 import config.EditState;
+import org.apache.commons.math3.util.Pair;
+import util.SVGPath;
 import util.Size;
 import util.Point;
 
@@ -9,6 +11,7 @@ import java.awt.geom.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 public class DrawableBox extends DrawableObject {
 
@@ -18,17 +21,19 @@ public class DrawableBox extends DrawableObject {
     private static final Color MOUSE_OVER_COLOR = new Color(240,240,240);
     private static final Color CIRCLE_COLOR = new Color(140,0, 0);
 
+    private List<DrawableArrow> attachedArrows = new ArrayList<>();
+
     public boolean isFilled = true;
     private final float borderWidth = .1f;   //in units
     private int selectedBorder = -1;
 
     public Path2D path;
-    public String pathText = "";
-    public String scaledPathText = "";
+    public String pathText;
+    public String modifiedPathText = "";
 
-    private AffineTransform at = new AffineTransform();
+    private final AffineTransform aft = new AffineTransform();
 
-    private Path2D edgeCircle = PathInterpreter.getPath("M0 -5 C6.7 -5 6.7 5 0 5 C-6.7 5 -6.7 -5 0 -5");
+    private final Path2D edgeCircle = SVGPath.getPath("M0 -5 C6.7 -5 6.7 5 0 5 C-6.7 5 -6.7 -5 0 -5");
 
     public DrawableBox(String path, Point location, Size size){
         this.pathText = path;
@@ -43,9 +48,14 @@ public class DrawableBox extends DrawableObject {
         g2d.translate(utp(location.x, topLeft.x, pixelPerUnit),utp(location.y, topLeft.y, pixelPerUnit));
 
         // scale to current zoom factor
-        path = getScaled();  //Return a path in terms of units
+        var pair = createModifiedPath(pathText, (x) -> x * size.width / 100.0, (y) -> y * size.height / 100.0);
+        path = pair.getFirst();
+        modifiedPathText = pair.getSecond();
+
+        // scale to unit and apply any transformations
         g2d.scale(pixelPerUnit, pixelPerUnit);
-        path.transform(at);
+        path.transform(aft);
+        aft.setToScale(1,1);
 
         path.setWindingRule(Path2D.WIND_EVEN_ODD);	//Needs to be set. PPT only supports the even-odd fill-rule
 
@@ -71,7 +81,7 @@ public class DrawableBox extends DrawableObject {
         // draw a circle on border if mouse over at 50% point
         g2d.setColor(CIRCLE_COLOR);
         if (selectedBorder != -1 && EditState.currentMouseMode == EditState.MouseMode.ARROW){
-            Point circleLocation = getPercentageLocationOnBorder(.5);
+            Point circleLocation = getPercentageLocationOnBorder(.5, selectedBorder);
             g2d.translate(circleLocation.x * pixelPerUnit, circleLocation.y * pixelPerUnit);
             g2d.fill(edgeCircle);
             g2d.draw(edgeCircle);
@@ -79,11 +89,12 @@ public class DrawableBox extends DrawableObject {
 
     }
 
-    private Point getPercentageLocationOnBorder(double percentage) {
+    @Override
+    public Point getPercentageLocationOnBorder(double percentage, int borderIndex) {
         var iterator = path.getPathIterator(null);
         Point lastLocation = new Point(0,0);
         double[] coords = new double[6];
-        for (int wait = 0; wait < selectedBorder; wait++) {
+        for (int wait = 0; wait < borderIndex; wait++) {
             var type = iterator.currentSegment(coords);
             lastLocation = getLastLocation(lastLocation, coords, type);
             iterator.next();
@@ -113,15 +124,14 @@ public class DrawableBox extends DrawableObject {
         return percOnLine(percentage, ABBC, BCCD);
     }
 
+
     private static Point percOnLine(double x, Point l1, Point l2) {
         //Return point at x% along line l1-l2
         return new Point(l1.x + x * (l2.x - l1.x),l1.y + x * (l2.y - l1.y));
     }
 
-    private Path2D getScaled() {
-        java.util.List<String> tokens = PathInterpreter.tokenize(pathText);
-        double widthFactor = size.width / 100.0;
-        double heightFactor = size.height / 100.0;
+    private Pair<Path2D, String> createModifiedPath(String pathText, Function<Double, Double> modifyX, Function<Double, Double> modifyY) {
+        java.util.List<String> tokens = SVGPath.tokenize(pathText);
         StringBuilder newPath = new StringBuilder();
 
         List<String> subTokens = new ArrayList<>();
@@ -135,8 +145,8 @@ public class DrawableBox extends DrawableObject {
                 if (subTokens.size() > 0) {
                     StringBuilder result = new StringBuilder(subTokens.get(0));
                     for (int x = 1; x < subTokens.size(); x += 2) {
-                        String t1 = String.valueOf((Double.parseDouble(subTokens.get(x)) * widthFactor));
-                        String t2 = String.valueOf((Double.parseDouble(subTokens.get(x+1)) * heightFactor));
+                        String t1 = String.valueOf(modifyX.apply(Double.parseDouble(subTokens.get(x))));
+                        String t2 = String.valueOf(modifyY.apply(Double.parseDouble(subTokens.get(x + 1))));
                         result.append(" ").append(t1).append(" ").append(t2);
                     }
 
@@ -148,21 +158,16 @@ public class DrawableBox extends DrawableObject {
             subTokens.add(token);
         }
 
-        newPath = new StringBuilder(newPath.toString().trim());
-        scaledPathText = newPath.toString();
-        return PathInterpreter.getPath(newPath.toString());
+        var returnString = newPath.toString().trim();
+        return new Pair<>(SVGPath.getPath(returnString), returnString);
     }
 
-    //distance from start to unit in pixels
-    private int utp(double unit, double start, double pixelPerUnit) {
-        return (int)((unit - start) * pixelPerUnit);
-    }
 
     @Override
-    public boolean checkMousePosition(Point unitMousePosition) {
+    public boolean checkPointLocation(Point unitMousePosition, boolean updateBorder) {
         if (path == null) return false;
         boolean isInPath = path.intersects(unitMousePosition.surroundingRectangle(borderWidth * 4, location));
-        if (isInPath){
+        if (updateBorder && isInPath){
             selectedBorder = isAtAnyBorder(unitMousePosition);
         } else {
             selectedBorder = -1;
@@ -213,7 +218,7 @@ public class DrawableBox extends DrawableObject {
         Size percentageGrowth = unitGrowth.add(originalSize).divided_by(originalSize);
 
         // grow when pulled away from center, shrink when towards
-        at.setToScale(at.getScaleX() * percentageGrowth.width, at.getScaleY() * percentageGrowth.height);
+        aft.setToScale(aft.getScaleX() * percentageGrowth.width, aft.getScaleY() * percentageGrowth.height);
 
         // move shape when top/left of center
         if (relativeDragPoint.y < 0.0){
@@ -222,6 +227,54 @@ public class DrawableBox extends DrawableObject {
         if (relativeDragPoint.x < 0.0){
             location.x += dragMovement.x;
         }
+    }
+
+    @Override
+    public void normalizeMirroring() {
+
+        if (size.width >= 0 && size.height >= 0) return;
+
+        Function<Double, Double> modifyX = (x)->x;
+        Function<Double, Double> modifyY = (y)->y;
+
+        // depending on mirror axes move shape and set the modify lambda to mirror around original center
+        if (size.width < 0){
+            size.width = -size.width;
+            location.x -= size.width;
+            modifyX = (x) -> 2 * SVGPath.getPath(pathText).getBounds2D().getCenterX() - x;
+        }
+        if (size.height < 0){
+            size.height = -size.height;
+            location.y -= size.height;
+            modifyY = (y) -> 2 * SVGPath.getPath(pathText).getBounds2D().getCenterY() - y;
+        }
+
+        var pair = createModifiedPath(pathText, modifyX, modifyY);
+        path = pair.getFirst();
+        pathText = pair.getSecond();
+    }
+
+    @Override
+    protected void addAttachedArrow(DrawableArrow arrow) {
+        attachedArrows.add(arrow);
+    }
+
+    @Override
+    protected void removeAttachedArrow(DrawableArrow arrow) {
+        attachedArrows.remove(arrow);
+    }
+
+
+    @Override
+    public List<DrawableArrow> getAttachedArrows() {
+        return attachedArrows;
+    }
+
+    @Override
+    public Rectangle2D getBounds() {
+        var bounds = path.getBounds2D();
+
+        return new Rectangle2D.Double(bounds.getX() + location.x, bounds.getY() + location.y, bounds.getWidth(), bounds.getHeight());
     }
 
 

@@ -12,9 +12,10 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class DrawingAreaView implements View {
-    DrawingArea area;
+    public DrawingArea area;
     View parent;
     Color backgroundColor;
+    public static DrawingAreaView instance;
     public DrawingAreaController controller;
 
     public DrawingAreaView(DrawingAreaController controller, View parent, Color backgroundColor){
@@ -22,6 +23,7 @@ public class DrawingAreaView implements View {
         this.parent = parent;
         this.backgroundColor = backgroundColor;
         controller.init(this);
+        instance = this;
     }
 
     @Override
@@ -56,11 +58,15 @@ public class DrawingAreaView implements View {
         area.moveScreen(movement);
     }
 
-    static class DrawingArea extends JPanel implements MouseListener, MouseWheelListener, MouseMotionListener, KeyListener {
+    public void redraw() {
+        area.repaint();
+    }
+
+    public static class DrawingArea extends JPanel implements MouseListener, MouseWheelListener, MouseMotionListener, KeyListener {
 
         private static DrawingAreaController controller;
         private static Dimension panelPixelSize; 			  //Size of drawing area in pixels
-        private static Size panelUnitSize; 	                  //Size of drawing area in units
+        public static Size panelUnitSize; 	                  //Size of drawing area in units
         private static double dotDistanceDrawFactor = 1.0; 	  //2 = draw 1 dot for every 2 units, 0.5 = draw 2 dots for every 1 unit etc.
 
         public static Point center = new Point(0,0);    //unit location at center of window
@@ -78,15 +84,15 @@ public class DrawingAreaView implements View {
 
         public DrawingArea(DrawingAreaController controller, int dotSize, Color dotColor, double dotDistance) {
             super();
-            this.controller = controller;
+            DrawingArea.controller = controller;
             this.dotSize = dotSize;
             this.dotColor = dotColor;
             this.dotDistance = dotDistance;
 
-            this.addMouseListener((MouseListener) this);
-            this.addMouseWheelListener((MouseWheelListener) this);
-            this.addMouseMotionListener((MouseMotionListener)this);
-            this.addKeyListener((KeyListener) this);
+            this.addMouseListener(this);
+            this.addMouseWheelListener(this);
+            this.addMouseMotionListener(this);
+            this.addKeyListener( this);
         }
 
         public void paintComponent(Graphics g) {
@@ -231,5 +237,8 @@ public class DrawingAreaView implements View {
         }
 
 
+        public void redraw() {
+            this.repaint();
+        }
     }
 }

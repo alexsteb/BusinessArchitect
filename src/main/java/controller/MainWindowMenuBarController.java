@@ -4,6 +4,7 @@ import abstract_views.MenuItemView;
 import config.EditState;
 import intf.Controller;
 import intf.View;
+import view.DrawingAreaView;
 
 public class MainWindowMenuBarController implements Controller {
     public static Void endApplication(View source){
@@ -18,4 +19,9 @@ public class MainWindowMenuBarController implements Controller {
     public static Void selectText(View source) { EditState.selectMouseMode(EditState.MouseMode.TEXT); return null; }
     public static Void selectFile(View source) { EditState.selectMouseMode(EditState.MouseMode.FILE); return null; }
     public static Void selectImage(View source) { EditState.selectMouseMode(EditState.MouseMode.IMAGE); return null; }
+
+    public static Void deleteSelection(View source) {
+        DrawingAreaView.instance.controller.deleteSelected();
+        return null;
+    }
 }

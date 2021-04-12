@@ -42,6 +42,27 @@ public class Point {
                 '}';
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Point point = (Point) o;
+
+        if (Double.compare(point.x, x) != 0) return false;
+        return Double.compare(point.y, y) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        int result;
+        long temp;
+        temp = Double.doubleToLongBits(x);
+        result = (int) (temp ^ (temp >>> 32));
+        temp = Double.doubleToLongBits(y);
+        result = 31 * result + (int) (temp ^ (temp >>> 32));
+        return result;
+    }
 
     public Point2D toPoint2D() {
         return new Point2D.Double(x, y);
@@ -61,5 +82,19 @@ public class Point {
         if (y != 0.0 && Math.abs(x / y) > 5) newY = 0;
         if (x != 0.0 && Math.abs(y / x) > 5) newX = 0;
         return new Point(newX, newY);
+    }
+
+    public Size toSize() {
+        return new Size(x, y);
+    }
+
+    static class Integer extends Point {
+        public int x;
+        public int y;
+        public Integer(int x, int y){
+            super(x, y);
+            this.x = x;
+            this.y = y;
+        }
     }
 }

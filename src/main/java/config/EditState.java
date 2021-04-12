@@ -15,14 +15,23 @@ public class EditState {
 
     public static boolean isOverObject;
     public static boolean isOverObjectEdge;
+    public static String currentShapePath = "M0 0 L100 0 L100 100 L0 100 L50 50 L0 0";
 
     public static Cursor getCurrentCursor() {
         return switch(currentMouseMode){
             case HAND -> isOverObjectEdge ?
                     Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR) : Cursor.getPredefinedCursor(Cursor.HAND_CURSOR);
+            case ARROW -> Cursor.getDefaultCursor();
             default -> Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR);
         };
     }
+
+    public enum ArrowStyle {
+        LINE, ARROW
+    }
+
+    public static ArrowStyle currentArrowStyle = ArrowStyle.LINE;
+
 
     public enum MouseMode {
         NONE, HAND, SELECT, BOX, ARROW, TEXT, FILE, IMAGE

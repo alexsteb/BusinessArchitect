@@ -54,7 +54,7 @@ public class MainWindowMenuBarView extends MenuBarView {
                                         new MenuView.Configurator(new MainMenuItemView(this, R.text("cut"), KeyEvent.VK_S, KeyStroke.getKeyStroke(KeyEvent.VK_X, InputEvent.CTRL_DOWN_MASK), null, standardFont), null),
                                         new MenuView.Configurator(new MainMenuItemView(this, R.text("copy"), KeyEvent.VK_K, KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.CTRL_DOWN_MASK), null, standardFont), null),
                                         new MenuView.Configurator(new MainMenuItemView(this, R.text("insert"), KeyEvent.VK_E, KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK), null, standardFont), null),
-                                        new MenuView.Configurator(new MainMenuItemView(this, R.text("delete"), KeyEvent.VK_L, KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), null, standardFont), null),
+                                        new MenuView.Configurator(new MainMenuItemView(this, R.text("delete"), KeyEvent.VK_L, KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), MainWindowMenuBarController::deleteSelection, standardFont), null),
                                         new MenuView.Configurator(new MainMenuItemView(this, R.text("select_all"), KeyEvent.VK_A, KeyStroke.getKeyStroke(KeyEvent.VK_A, InputEvent.CTRL_DOWN_MASK), null, standardFont), null)
                                 }),
                         new MenuView.Configurator(new MainMenuView(this, R.text("window"), KeyEvent.VK_F, standardFont),

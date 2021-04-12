@@ -2,6 +2,7 @@ package controller;
 
 import config.EditState;
 import intf.Controller;
+import model.DrawableArrow;
 import model.DrawableBox;
 import model.DrawableObject;
 import util.Point;
@@ -18,8 +19,9 @@ public class DrawingAreaController implements Controller {
     List<DrawableObject> objects = new ArrayList<>();
     public double pixelPerUnit;
 
+
     private enum DrawingAreaState {
-        NORMAL, DRAGGING_SCREEN, DRAGGING_OBJECT, PULLING_OBJECT_EDGE
+        NORMAL, DRAGGING_SCREEN, DRAGGING_OBJECT, PULLING_OBJECT_EDGE, DRAWING_ARROW, DRAWING_BOX
     }
 
     private DrawingAreaState state = DrawingAreaState.NORMAL;
@@ -43,11 +45,24 @@ public class DrawingAreaController implements Controller {
         return topObject;
     }
 
+
+    public void deleteSelected() {
+        var selectedBoxes = objects.stream().filter((it) -> it.isSelected && !(it instanceof DrawableArrow)).collect(Collectors.toList());
+        selectedBoxes.forEach((it) -> {
+                    var arrows = it.getAttachedArrows();
+                    arrows.forEach((arrow) -> objects.remove(arrow));
+                });
+        objects = objects.stream().filter((it) -> !it.isSelected).collect(Collectors.toList());
+        view.redraw();
+    }
+
     public void mouseMovedTo(Point target) {  // Note: is not called when dragging
+        EditState.isOverObject = false;
+        EditState.isOverObjectEdge = false;
         for (var obj : objects){
-            obj.isMouseOver = obj.checkMousePosition(target);
-            EditState.isOverObject = obj.isMouseOver;
-            EditState.isOverObjectEdge = obj.getSelectedBorder() != -1;
+            obj.isMouseOver = obj.checkPointLocation(target, true);
+            EditState.isOverObject |= obj.isMouseOver;
+            EditState.isOverObjectEdge |= obj.getSelectedBorder() != -1;
         }
     }
 
@@ -60,6 +75,7 @@ public class DrawingAreaController implements Controller {
         switch (state){
             case DRAGGING_OBJECT -> {
                 draggedObject.location = draggedObject.location.subtract(dragMovement);
+                draggedObject.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
                 dragOrigin = target;
             }
             case DRAGGING_SCREEN -> {
@@ -68,31 +84,76 @@ public class DrawingAreaController implements Controller {
             }
             case PULLING_OBJECT_EDGE -> {
                 draggedObject.moveEdge(draggedEdge, new Point(0,0).subtract(dragMovement), dragOrigin);
+                draggedObject.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
                 dragOrigin = target;
+            }
+            case DRAWING_BOX -> {
+                DrawableBox newObject = (DrawableBox) objects.get(objects.size() - 1);
+                newObject.size = target.subtract(dragOrigin).toSize();
             }
         }
     }
 
+    private DrawableObject arrowOrigin;
+    private int arrowOriginBorder;
+
     public void mousePressedAt(Point at) {
-        dragOrigin = at;
-        dragOrigin = at;
+        if (state == DrawingAreaState.DRAWING_ARROW){
+            var topObject = objectUnderMouse();
+            if (topObject != null && topObject.getSelectedBorder() != -1){
+                objects.add(new DrawableArrow(EditState.currentArrowStyle, arrowOrigin, arrowOriginBorder, topObject, topObject.getSelectedBorder()));
+                state = DrawingAreaState.NORMAL;
+                EditState.currentMouseMode = EditState.MouseMode.HAND;
+            }
+        }
 
         if (state != DrawingAreaState.NORMAL) return;
+        dragOrigin = at;
 
-        if (EditState.currentMouseMode == EditState.MouseMode.HAND){
-            draggedObject = objectUnderMouse();
-            if (draggedObject != null && EditState.isOverObjectEdge) {
-                state = DrawingAreaState.PULLING_OBJECT_EDGE;
-                draggedEdge = draggedObject.getSelectedBorder();
+        var objectUnderMouse = objectUnderMouse();
+        if (objectUnderMouse != null) objectUnderMouse.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
+
+        switch(EditState.currentMouseMode){
+            case HAND -> {
+                draggedObject = objectUnderMouse;
+                if (draggedObject != null && EditState.isOverObjectEdge) {
+                    state = DrawingAreaState.PULLING_OBJECT_EDGE;
+                    draggedEdge = draggedObject.getSelectedBorder();
+                }
+                else if (draggedObject != null)
+                    state = DrawingAreaState.DRAGGING_OBJECT;
+                else
+                    state = DrawingAreaState.DRAGGING_SCREEN;
             }
-            else if (draggedObject != null)
-                state = DrawingAreaState.DRAGGING_OBJECT;
-            else
-                state = DrawingAreaState.DRAGGING_SCREEN;
+            case BOX -> {
+                state = DrawingAreaState.DRAWING_BOX;
+                objects.add(
+                        new DrawableBox(EditState.currentShapePath, at, new Size(0,0))
+                );
+            }
+            case SELECT -> {
+                if (objectUnderMouse != null)
+                    objectUnderMouse.isSelected = !objectUnderMouse.isSelected;
+            }
+            case ARROW -> {
+                if (objectUnderMouse != null && objectUnderMouse.getSelectedBorder() != -1){
+                    arrowOrigin = objectUnderMouse;
+                    arrowOriginBorder = objectUnderMouse.getSelectedBorder();
+                    state = DrawingAreaState.DRAWING_ARROW;
+                }
+            }
         }
+        view.redraw();
     }
 
     public void mouseReleasedAt(Point at) {
+        if (state == DrawingAreaState.DRAWING_ARROW) return;
+        if (state == DrawingAreaState.DRAWING_BOX){
+            objects.get(objects.size() - 1).normalizeMirroring();
+            EditState.currentMouseMode = EditState.MouseMode.HAND;
+        }
+
         state = DrawingAreaState.NORMAL;
+        view.redraw();
     }
 }

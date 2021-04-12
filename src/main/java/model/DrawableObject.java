@@ -3,7 +3,10 @@ package model;
 
 import util.Size;
 import util.Point;
+
 import java.awt.*;
+import java.awt.geom.Rectangle2D;
+import java.util.List;
 
 
 public abstract class DrawableObject {
@@ -19,7 +22,7 @@ public abstract class DrawableObject {
     public abstract void draw(Graphics g, Point topLeft, double pixelPerUnit);
 
     //Check whether object is selectable at provided x,y position
-    public abstract boolean checkMousePosition(Point unitMousePosition);
+    public abstract boolean checkPointLocation(Point unitMousePosition, boolean updateBorder);
 
     //Check whether mouse position is at a (linear) border of object and return the index of said border in the shape's path
     protected abstract int isAtAnyBorder(Point unitMousePosition);
@@ -32,4 +35,20 @@ public abstract class DrawableObject {
 
 
     public abstract void moveEdge(int draggedEdge, Point dragMovement, Point dragOrigin);
+
+    public abstract void normalizeMirroring();
+
+    protected abstract void addAttachedArrow(DrawableArrow arrow);
+    protected abstract void removeAttachedArrow(DrawableArrow arrow);
+
+    public abstract Point getPercentageLocationOnBorder(double v, int originBorder);
+
+    //distance from start to unit in pixels
+    public static int utp(double unit, double start, double pixelPerUnit) {
+        return (int)((unit - start) * pixelPerUnit);
+    }
+
+    public abstract List<DrawableArrow> getAttachedArrows();
+
+    public abstract Rectangle2D getBounds();
 }
