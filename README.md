@@ -9,8 +9,8 @@ When done, this app will i.a. be able to:
 
 
 An example workflow could be:
-  - click on the left border of one box
-  - click on the right border of another box
+  - click on the left border of the green box
+  - click on the right border of the red box
   - repeat 3x
   - this would result in the following:
 
