@@ -1,4 +1,4 @@
-# BusinessArchitect
+# Business Architect / Boxes and Arrows
 
 This is work-in-progress.
 
