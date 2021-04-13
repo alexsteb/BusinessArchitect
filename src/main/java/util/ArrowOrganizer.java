@@ -48,17 +48,95 @@ public class ArrowOrganizer {
         }
 
         //TODO:
-        // - if a boundary is infinity, spread lines away from edge, at least 1 unit
-        //   - this means drawing outside the play field
-        // - for lines on an object border (they're not in lineGroups) -> separately spread them using percentageOnBorder and exactly position them
         // - do the permutation
+        // - change the unit size, when zooming
 
         // adjust lines back to screen location
         for (var arrow : arrows){
             for (var line : arrow.getLines()){
-                line.a = line.a.toInteger().add(totalTopLeft);
-                line.b = line.b.toInteger().add(totalTopLeft);
+                line.a = new Point(line.a.toInteger().x + totalTopLeft.x, line.a.toInteger().y + totalTopLeft.y);
+                line.b = new Point(line.b.toInteger().x + totalTopLeft.x, line.b.toInteger().y + totalTopLeft.y);
             }
+        }
+
+        // adjust lines by box of origin and target
+        spreadArrowsOnBoxBorder(arrows);
+
+    }
+
+    private static void spreadArrowsOnBoxBorder(List<DrawableArrow> arrows) {
+        var originMates = new ArrayList<ArrowGroup>();
+        var targetMates = new ArrayList<ArrowGroup>();
+        var groupedIndicesOrigin = new HashSet<Integer>();
+        var groupedIndicesTarget = new HashSet<Integer>();
+
+        for (var i = 0; i < arrows.size(); i++){
+            var arrow1 = arrows.get(i);
+            groupedIndicesOrigin.add(i);
+            groupedIndicesTarget.add(i);
+            var originGroup = new ArrowGroup();
+            var targetGroup = new ArrowGroup();
+            originGroup.arrows.add(arrow1);
+            targetGroup.arrows.add(arrow1);
+
+            for (var j = i + 1; j < arrows.size(); j++){
+                if (!groupedIndicesOrigin.contains(j)) {
+                    var arrow2 = arrows.get(j);
+                    if (arrow1.originObject == arrow2.originObject && arrow1.originBorder == arrow2.originBorder) {
+                        groupedIndicesOrigin.add(j);
+                        originGroup.arrows.add(arrow2);
+                    }
+                }
+                if (!groupedIndicesTarget.contains(j)) {
+                    var arrow2 = arrows.get(j);
+                    if (arrow1.targetObject == arrow2.targetObject && arrow1.targetBorder == arrow2.targetBorder) {
+                        groupedIndicesTarget.add(j);
+                        targetGroup.arrows.add(arrow2);
+                    }
+                }
+            }
+            originMates.add(originGroup);
+            targetMates.add(targetGroup);
+        }
+
+        var bothGroups = new ArrayList<ArrayList<ArrowGroup>>();
+        bothGroups.add(originMates);
+        bothGroups.add(targetMates);
+
+        for (var mates : bothGroups){
+            for (var group : mates){
+                if (group.arrows.size() > 1) {
+                    var distanceInBetween = 1.0 / (group.arrows.size() + 1);
+                    var runningPercentage = distanceInBetween;
+                    for (var arrow : group.arrows){
+                        var obj = (mates == originMates) ? arrow.originObject : arrow.targetObject;
+                        var location = obj.getPercentageLocationOnBorder(runningPercentage, (mates == originMates) ? arrow.originBorder : arrow.targetBorder).add(obj.location);
+                        runningPercentage += distanceInBetween;
+                        var lines = arrow.getLines();
+                        if (mates == originMates){
+                            lines.get(0).a = location;
+                            if (!lines.get(0).isVertical()) {
+                                lines.get(0).b.x = location.x;
+                                lines.get(1).a.x = location.x;
+                            } else {
+                                lines.get(0).b.y = location.y;
+                                lines.get(1).a.y = location.y;
+                            }
+                        } else {
+                            lines.get(lines.size() - 1).b = location;
+                            if (lines.get(lines.size() - 1).isVertical()) {
+                                lines.get(lines.size() - 1).a.x = location.x;
+                                lines.get(lines.size() - 2).b.x = location.x;
+                            } else {
+                                lines.get(lines.size() - 1).a.y = location.y;
+                                lines.get(lines.size() - 2).b.y = location.y;
+                            }
+                        }
+                    }
+                    System.out.println("");
+                }
+            }
+
         }
     }
 
@@ -193,6 +271,13 @@ public class ArrowOrganizer {
             }
             System.out.println("");
         }
+    }
+}
+
+class ArrowGroup{
+    public List<DrawableArrow> arrows;
+    public ArrowGroup(){
+        arrows = new ArrayList<>();
     }
 }
 
