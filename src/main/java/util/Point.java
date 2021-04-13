@@ -16,6 +16,12 @@ public class Point {
         return new Point(p2d.getX(), p2d.getY());
     }
 
+    public double distanceToRect(Rectangle2D rect){
+        var dx = Math.max(0.0, Math.max(rect.getMinX() - x, x - rect.getMaxX()));
+        var dy = Math.max(0.0, Math.max(rect.getMinY() - y, y - rect.getMaxY()));
+        return Math.sqrt(dx*dx + dy*dy);
+    }
+
     public double distance(Point lastPoint) {
         return Math.sqrt(distanceSq(x, y, lastPoint.x, lastPoint.y));
     }
@@ -88,6 +94,13 @@ public class Point {
         return new Size(x, y);
     }
 
+    public Integer toInteger() {
+        var integer = new Integer((int)x, (int)y);
+        return integer;
+    }
+
+
+
     static class Integer extends Point {
         public int x;
         public int y;
@@ -95,6 +108,42 @@ public class Point {
             super(x, y);
             this.x = x;
             this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "Point{" +
+                    "x=" + x +
+                    ", y=" + y +
+                    '}';
+        }
+
+        @Override
+        public Integer add(Point other){
+            return new Integer((int)(x + other.x), (int)(y + other.y));
+        }
+
+        @Override
+        public Integer subtract(Point other) {
+            return new Integer((int)(x - other.x), (int)(y - other.y));
+        }
+
+        public Integer add(Integer other){
+            return new Integer(x + other.x, y + other.y);
+        }
+        public Integer subtract(Integer other) {
+            return new Integer(x - other.x, y - other.y);
+        }
+
+        public Point toDoublePoint() {
+            return new Point(x, y);
+        }
+
+        public Integer minOf(Integer other) {
+            return new Integer(Math.min(x, other.x), Math.min(y, other.y));
+        }
+        public Integer maxOf(Integer other) {
+            return new Integer(Math.max(x, other.x), Math.max(y, other.y));
         }
     }
 }

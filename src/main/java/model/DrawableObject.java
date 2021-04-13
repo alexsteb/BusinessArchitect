@@ -19,7 +19,7 @@ public abstract class DrawableObject {
 
 
     //Draw object with topLeft being the panel's top-left corner in units
-    public abstract void draw(Graphics g, Point topLeft, double pixelPerUnit);
+    public abstract void draw(Graphics g, Point topLeft, Size panelSize, double pixelPerUnit);
 
     //Check whether object is selectable at provided x,y position
     public abstract boolean checkPointLocation(Point unitMousePosition, boolean updateBorder);

@@ -1,6 +1,7 @@
 package model;
 
 import config.EditState;
+import util.Line;
 import util.PathFinder;
 import util.Point;
 import util.Size;
@@ -10,40 +11,42 @@ import java.awt.*;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class DrawableArrow extends DrawableObject {
 
-    private boolean requestRecalc = true;  // on attached box move
     private Path2D path;
+    private List<Line> lines = new ArrayList<>();
     private final float borderWidth = .1f;   //in units
 
+    private EditState.ArrowStyle arrowStyle;
     public DrawableObject originObject, targetObject;
     public int originBorder, targetBorder;
     public double originPercentage = 0.5;
     public double targetPercentage = 0.5;
+    private Point originLocation;
+    private Point targetLocation;
+
+    public int[][] playingField;
+    public Point playingFieldTopLeft;
+
 
     public DrawableArrow(EditState.ArrowStyle arrowStyle, DrawableObject originObject, int originBorder, DrawableObject targetObject, int targetBorder) {
         super();
-        originObject.addAttachedArrow(this);
-        targetObject.addAttachedArrow(this);
+        this.arrowStyle = arrowStyle;
         this.originObject = originObject;
         this.targetObject = targetObject;
         this.originBorder = originBorder;
         this.targetBorder = targetBorder;
+        originObject.addAttachedArrow(this);
+        targetObject.addAttachedArrow(this);
     }
 
     @Override
-    public void draw(Graphics g, Point topLeft, double pixelPerUnit) {
+    public void draw(Graphics g, Point topLeft, Size panelSize, double pixelPerUnit) {
         Graphics2D g2d = (Graphics2D)g.create();
-        if (requestRecalc) {
-            var objectsOnScreen = DrawingAreaView.instance.controller.objectsOnScreen(topLeft, DrawingAreaView.DrawingArea.panelUnitSize);
-            var nonArrowsOnScreen = objectsOnScreen.stream().filter((it)->!(it instanceof DrawableArrow)).collect(Collectors.toList());
-            path = PathFinder.findShortestPath(this, nonArrowsOnScreen);
-            requestRecalc = false;
-        }
+
         g2d.translate(utp(0.0, topLeft.x, pixelPerUnit),utp(0.0, topLeft.y, pixelPerUnit));
 
         g2d.scale(pixelPerUnit, pixelPerUnit);
@@ -51,14 +54,28 @@ public class DrawableArrow extends DrawableObject {
         BasicStroke bs = new BasicStroke(borderWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
         g2d.setStroke(bs);
 
+        // create final path from lines
+        var path = new Path2D.Double();
+        if (lines.size() > 0) {
+            path.moveTo(lines.get(0).a.x, lines.get(0).a.y);
+            for (var line : lines) {
+                path.lineTo(line.b.x, line.b.y);
+            }
+        }
+
         g2d.draw(path);
 
         g2d.scale(1.0 / pixelPerUnit, 1.0 / pixelPerUnit);
     }
 
-    public void requestRecalc(){
-        this.requestRecalc = true;
+    public void recalculate(Point topLeft, Size panelSize){
+        var objects = DrawingAreaView.instance.controller.objects;
+        var nonArrows = objects.stream().filter((it)->
+                        !(it instanceof DrawableArrow) && it.isInRectangle(topLeft, panelSize)
+                ).collect(Collectors.toList());
+        lines = PathFinder.findShortestPath(this, nonArrows, topLeft, panelSize);
     }
+
 
     @Override
     public boolean checkPointLocation(Point unitMousePosition, boolean updateBorder) {
@@ -72,7 +89,11 @@ public class DrawableArrow extends DrawableObject {
 
     @Override
     public boolean isInRectangle(Point origin, Size size) {
-        return true;
+        var rect = new Rectangle2D.Double(origin.x, origin.y, size.width, size.height);
+        for (var line : lines){
+            if (rect.intersectsLine(line.a.x, line.a.y, line.b.x, line.b.y)) return true;
+        }
+        return false;
     }
 
     @Override
@@ -116,4 +137,21 @@ public class DrawableArrow extends DrawableObject {
         return null;
     }
 
+    public List<Line> getLines() {
+        return lines;
+    }
+
+    public Point getOriginLocation(boolean calculateNew) {
+        if (originLocation == null || calculateNew){
+            originLocation = originObject.getPercentageLocationOnBorder(originPercentage, originBorder).add(originObject.location);
+        }
+        return originLocation;
+    }
+
+    public Point getTargetLocation(boolean calculateNew) {
+        if (targetLocation == null || calculateNew){
+            targetLocation = targetObject.getPercentageLocationOnBorder(targetPercentage, targetBorder).add(targetObject.location);
+        }
+        return targetLocation;
+    }
 }

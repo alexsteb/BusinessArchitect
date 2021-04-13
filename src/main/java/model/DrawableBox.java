@@ -42,7 +42,7 @@ public class DrawableBox extends DrawableObject {
     }
 
     @Override
-    public void draw(Graphics g, Point topLeft, double pixelPerUnit) {
+    public void draw(Graphics g, Point topLeft, Size panelSize, double pixelPerUnit) {
         Graphics2D g2d = (Graphics2D)g.create();
 
         g2d.translate(utp(location.x, topLeft.x, pixelPerUnit),utp(location.y, topLeft.y, pixelPerUnit));
@@ -272,6 +272,9 @@ public class DrawableBox extends DrawableObject {
 
     @Override
     public Rectangle2D getBounds() {
+        if (path == null){
+            return new Rectangle2D.Double(location.x, location.y, size.width, size.height);
+        }
         var bounds = path.getBounds2D();
 
         return new Rectangle2D.Double(bounds.getX() + location.x, bounds.getY() + location.y, bounds.getWidth(), bounds.getHeight());
@@ -289,7 +292,8 @@ public class DrawableBox extends DrawableObject {
 
     @Override
     public boolean isInRectangle(Point origin, Size rectSize) {
-        return !(location.x + size.width < origin.x || location.y + size.height < origin.y || location.x > origin.x + rectSize.width || location.y > origin.y + rectSize.height);
+        var pathRect = getBounds();
+        return !(pathRect.getMinX() + pathRect.getWidth() < origin.x || pathRect.getMinY() + pathRect.getHeight() < origin.y || pathRect.getMinX() > origin.x + rectSize.width || pathRect.getMinY() > origin.y + rectSize.height);
     }
 
     @Override

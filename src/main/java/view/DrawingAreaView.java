@@ -124,7 +124,7 @@ public class DrawingAreaView implements View {
 
             //Draw all visible objects (pre-sorted)
             for (DrawableObject obj : controller.objectsOnScreen(unitPosTopLeft, panelUnitSize))
-                obj.draw(g, unitPosTopLeft, controller.pixelPerUnit);
+                obj.draw(g, unitPosTopLeft, panelUnitSize, controller.pixelPerUnit);
 
         }
 
@@ -216,20 +216,8 @@ public class DrawingAreaView implements View {
 
         @Override
         public void mouseWheelMoved(MouseWheelEvent e) {
-            int rotation = e.getWheelRotation();
-            if (rotation != 0) {
-                zoom += 0.1 * rotation;
-
-                //Move viewport towards mouse
-                if (rotation < 0) { //only when zooming in
-                    Point unitMouse = GetUnitMouse(e);
-                    double xOffset = (unitMouse.x - center.x) / 10.0;
-                    double yOffset = (unitMouse.y - center.y) / 10.0;
-                    center.x += xOffset;
-                    center.y += yOffset;
-                }
-                this.repaint();
-            }
+            zoom = controller.mouseZoomed(zoom, e.getWheelRotation(), GetUnitMouse(e), center);
+            this.repaint();
         }
 
         public static Point GetUnitMouse(MouseEvent e) {

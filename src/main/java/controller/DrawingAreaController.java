@@ -5,19 +5,22 @@ import intf.Controller;
 import model.DrawableArrow;
 import model.DrawableBox;
 import model.DrawableObject;
+import util.ArrowOrganizer;
 import util.Point;
 import util.Size;
 import view.DrawingAreaView;
 
 
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class DrawingAreaController implements Controller {
 
-    List<DrawableObject> objects = new ArrayList<>();
+    public List<DrawableObject> objects = new ArrayList<>();
     public double pixelPerUnit;
+
 
 
     private enum DrawingAreaState {
@@ -31,10 +34,26 @@ public class DrawingAreaController implements Controller {
         this.view = view;
     }
 
+    private Point unitPosTopLeft;
+    private Size panelSize;
+
     public List<DrawableObject> objectsOnScreen(Point unitPosTopLeft, Size panelSize) {
-        if (objects.isEmpty())
+        this.unitPosTopLeft = unitPosTopLeft;
+        this.panelSize = panelSize;
+        //TODO delete
+        if (objects.isEmpty()) {
+            objects.add(new DrawableBox("M0 0 L100 0 L100 100 L0 100 L0 0", new Point(-25.0,-5.0), new Size(10, 10)));
             objects.add(new DrawableBox("M0 0 L80 0 L100 100 L0 100 Q50 50 0 0", new Point(-5.0,-5.0), new Size(10, 10)));
+            objects.add(new DrawableBox("M0 0 L100 0 L100 100 L0 100 L0 0", new Point(15.0,-5.0), new Size(10, 10)));
+            objects.add(new DrawableArrow(EditState.ArrowStyle.LINE, objects.get(0), 2, objects.get(2), 4));
+            objects.add(new DrawableArrow(EditState.ArrowStyle.LINE, objects.get(0), 1, objects.get(2), 4));
+        }
+
         return objects.stream().filter((it) -> it.isInRectangle(unitPosTopLeft, panelSize)).collect(Collectors.toList());
+    }
+
+    public List<DrawableObject> objectsOnScreen() {
+        return objectsOnScreen(unitPosTopLeft, panelSize);
     }
 
     private DrawableObject objectUnderMouse(){
@@ -56,6 +75,36 @@ public class DrawingAreaController implements Controller {
         view.redraw();
     }
 
+    private void recalculateAllArrowsOnScreen(){
+        var screenRect = new Rectangle2D.Double(unitPosTopLeft.x, unitPosTopLeft.y, panelSize.width, panelSize.height);
+        var arrowsOnScreen = objects.stream().filter((it)->it instanceof DrawableArrow &&
+                (screenRect.contains(((DrawableArrow) it).getOriginLocation(false).toPoint2D())
+                || screenRect.contains(((DrawableArrow) it).getTargetLocation(false).toPoint2D()))
+        ).collect(Collectors.toList());
+
+        // perform initial path-finding and save obstacle locations ("playing field")
+        arrowsOnScreen.forEach((it)->((DrawableArrow) it).recalculate(unitPosTopLeft, panelSize));
+
+        // center and rearrange arrow paths to avoid overlapping and to minimize crossings
+        ArrowOrganizer.beautifyArrows(arrowsOnScreen.stream().map((it)->(DrawableArrow) it).collect(Collectors.toList()));
+    }
+
+    public double mouseZoomed(double zoom, int rotation, Point unitMouse, Point center) {
+        if (rotation != 0) {
+            zoom += 0.1 * rotation;
+
+            //Move viewport towards mouse
+            if (rotation < 0) { //only when zooming in
+                double xOffset = (unitMouse.x - center.x) / 10.0;
+                double yOffset = (unitMouse.y - center.y) / 10.0;
+                center.x += xOffset;
+                center.y += yOffset;
+            }
+        }
+        recalculateAllArrowsOnScreen();
+        return zoom;
+    }
+
     public void mouseMovedTo(Point target) {  // Note: is not called when dragging
         EditState.isOverObject = false;
         EditState.isOverObjectEdge = false;
@@ -75,16 +124,17 @@ public class DrawingAreaController implements Controller {
         switch (state){
             case DRAGGING_OBJECT -> {
                 draggedObject.location = draggedObject.location.subtract(dragMovement);
-                draggedObject.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
+                recalculateAllArrowsOnScreen();
                 dragOrigin = target;
             }
             case DRAGGING_SCREEN -> {
                 view.moveScreen(dragMovement);
+                recalculateAllArrowsOnScreen();
                 dragOrigin = target.add(dragMovement);
             }
             case PULLING_OBJECT_EDGE -> {
                 draggedObject.moveEdge(draggedEdge, new Point(0,0).subtract(dragMovement), dragOrigin);
-                draggedObject.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
+                recalculateAllArrowsOnScreen();
                 dragOrigin = target;
             }
             case DRAWING_BOX -> {
@@ -102,6 +152,7 @@ public class DrawingAreaController implements Controller {
             var topObject = objectUnderMouse();
             if (topObject != null && topObject.getSelectedBorder() != -1){
                 objects.add(new DrawableArrow(EditState.currentArrowStyle, arrowOrigin, arrowOriginBorder, topObject, topObject.getSelectedBorder()));
+                recalculateAllArrowsOnScreen();
                 state = DrawingAreaState.NORMAL;
                 EditState.currentMouseMode = EditState.MouseMode.HAND;
             }
@@ -111,7 +162,7 @@ public class DrawingAreaController implements Controller {
         dragOrigin = at;
 
         var objectUnderMouse = objectUnderMouse();
-        if (objectUnderMouse != null) objectUnderMouse.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
+        //if (objectUnderMouse != null) objectUnderMouse.getAttachedArrows().forEach(DrawableArrow::requestRecalc);
 
         switch(EditState.currentMouseMode){
             case HAND -> {
