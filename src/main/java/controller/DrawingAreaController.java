@@ -42,11 +42,11 @@ public class DrawingAreaController implements Controller {
         this.panelSize = panelSize;
         //TODO delete
         if (objects.isEmpty()) {
-            objects.add(new DrawableBox("M0 0 L100 0 L100 100 L0 100 L0 0", new Point(-25.0,-5.0), new Size(10, 10)));
+           /* objects.add(new DrawableBox("M0 0 L100 0 L100 100 L0 100 L0 0", new Point(-25.0,-5.0), new Size(10, 10)));
             objects.add(new DrawableBox("M0 0 L80 0 L100 100 L0 100 Q50 50 0 0", new Point(-5.0,-5.0), new Size(10, 10)));
             objects.add(new DrawableBox("M0 0 L100 0 L100 100 L0 100 L0 0", new Point(15.0,-5.0), new Size(10, 10)));
             objects.add(new DrawableArrow(EditState.ArrowStyle.LINE, objects.get(0), 1, objects.get(2), 4));
-            objects.add(new DrawableArrow(EditState.ArrowStyle.LINE, objects.get(0), 1, objects.get(2), 4));
+            objects.add(new DrawableArrow(EditState.ArrowStyle.LINE, objects.get(0), 1, objects.get(2), 4));*/
         }
 
         return objects.stream().filter((it) -> it.isInRectangle(unitPosTopLeft, panelSize)).collect(Collectors.toList());

@@ -50,6 +50,9 @@ public class ArrowOrganizer {
         //TODO:
         // - do the permutation
         // - change the unit size, when zooming
+        // - also lines coming from boxes should be aware of surrounding lines and boxes
+        // - self-added lines coming from box, start acting weird when >=2
+        // - create new box and arrow -> not attaching correctly (maybe b/c integer?)
 
         // adjust lines back to screen location
         for (var arrow : arrows){
@@ -72,22 +75,28 @@ public class ArrowOrganizer {
 
         for (var i = 0; i < arrows.size(); i++){
             var arrow1 = arrows.get(i);
-            groupedIndicesOrigin.add(i);
-            groupedIndicesTarget.add(i);
-            var originGroup = new ArrowGroup();
-            var targetGroup = new ArrowGroup();
-            originGroup.arrows.add(arrow1);
-            targetGroup.arrows.add(arrow1);
+            ArrowGroup originGroup = null;
+            ArrowGroup targetGroup = null;
+            if (!groupedIndicesOrigin.contains(i)){
+                groupedIndicesOrigin.add(i);
+                originGroup = new ArrowGroup();
+                originGroup.arrows.add(arrow1);
+            }
+            if (!groupedIndicesTarget.contains(i)) {
+                groupedIndicesTarget.add(i);
+                targetGroup = new ArrowGroup();
+                targetGroup.arrows.add(arrow1);
+            }
 
             for (var j = i + 1; j < arrows.size(); j++){
-                if (!groupedIndicesOrigin.contains(j)) {
+                if (!groupedIndicesOrigin.contains(j) && originGroup != null) {
                     var arrow2 = arrows.get(j);
                     if (arrow1.originObject == arrow2.originObject && arrow1.originBorder == arrow2.originBorder) {
                         groupedIndicesOrigin.add(j);
                         originGroup.arrows.add(arrow2);
                     }
                 }
-                if (!groupedIndicesTarget.contains(j)) {
+                if (!groupedIndicesTarget.contains(j) && targetGroup != null) {
                     var arrow2 = arrows.get(j);
                     if (arrow1.targetObject == arrow2.targetObject && arrow1.targetBorder == arrow2.targetBorder) {
                         groupedIndicesTarget.add(j);
@@ -95,8 +104,8 @@ public class ArrowOrganizer {
                     }
                 }
             }
-            originMates.add(originGroup);
-            targetMates.add(targetGroup);
+            if (originGroup != null) originMates.add(originGroup);
+            if (targetGroup != null) targetMates.add(targetGroup);
         }
 
         var bothGroups = new ArrayList<ArrayList<ArrowGroup>>();
@@ -114,16 +123,17 @@ public class ArrowOrganizer {
                         runningPercentage += distanceInBetween;
                         var lines = arrow.getLines();
                         if (mates == originMates){
-                            lines.get(0).a = location;
-                            if (!lines.get(0).isVertical()) {
+
+                            if (lines.get(0).isVertical()) {
                                 lines.get(0).b.x = location.x;
                                 lines.get(1).a.x = location.x;
                             } else {
                                 lines.get(0).b.y = location.y;
                                 lines.get(1).a.y = location.y;
                             }
+                            lines.get(0).a = location;
                         } else {
-                            lines.get(lines.size() - 1).b = location;
+
                             if (lines.get(lines.size() - 1).isVertical()) {
                                 lines.get(lines.size() - 1).a.x = location.x;
                                 lines.get(lines.size() - 2).b.x = location.x;
@@ -131,9 +141,9 @@ public class ArrowOrganizer {
                                 lines.get(lines.size() - 1).a.y = location.y;
                                 lines.get(lines.size() - 2).b.y = location.y;
                             }
+                            lines.get(lines.size() - 1).b = location;
                         }
                     }
-                    System.out.println("");
                 }
             }
 
@@ -146,6 +156,8 @@ public class ArrowOrganizer {
         for (var obstacle : lineGroup.nearestCommonObstacles){
             boundaries.add(isVertical ? (int) obstacle.a.x : (int) obstacle.a.y);
         }
+        if (boundaries.size() == 0) return;
+
         int from = Collections.min(boundaries);
         int to = Collections.max(boundaries);
 
@@ -261,7 +273,6 @@ public class ArrowOrganizer {
     }
 
     private static void debugDrawMap(int[][] map){
-        System.out.println("");
         var width = 3;
         for (int[] line : map){
             for (int value : line) {
