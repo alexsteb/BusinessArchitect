@@ -1,17 +1,10 @@
 package abstract_views;
 
-import alt.MainWindow;
 import intf.View;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public abstract class MenuItemView extends MenuView {
     public JMenuItem menuItem = new JMenuItem();
@@ -41,7 +34,7 @@ public abstract class MenuItemView extends MenuView {
     public void drawBefore() {
         menuItem = new JMenuItem(text);
         menuItem.setFont(font);
-        if (isChecked) menuItem.setIcon(new ImageIcon(MainWindow.class.getResource("../checkmarkIcon.png")));
+        if (isChecked) menuItem.setIcon(new ImageIcon(MenuItemView.class.getResource("../checkmarkIcon.png")));
         menuItem.setAccelerator(accelerator);
         menuItem.setMnemonic(mnemonic);
         if (callback != null) menuItem.addActionListener(e -> callback.apply(MenuItemView.this));

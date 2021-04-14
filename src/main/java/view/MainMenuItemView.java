@@ -1,7 +1,6 @@
 package view;
 
 import abstract_views.MenuItemView;
-import alt.MainWindow;
 import intf.View;
 
 import javax.swing.*;
@@ -15,6 +14,6 @@ public class MainMenuItemView extends MenuItemView {
 
     public void setChecked(boolean checked) {
         isChecked = checked;
-        menuItem.setIcon(isChecked ? new ImageIcon(MainWindow.class.getResource("../checkmarkIcon.png")) : null);
+        menuItem.setIcon(isChecked ? new ImageIcon(MainMenuItemView.class.getResource("../checkmarkIcon.png")) : null);
     }
 }
